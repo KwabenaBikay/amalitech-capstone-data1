@@ -1,0 +1,15 @@
+# Environments
+venv/
+__pycache__/
+
+# Mac system files
+.DS_Store
+
+# Data files (since we pull from Cloudflare R2!)
+*.csv
+
+# Secrets
+.env
+secrets.toml
+
+.agents/
