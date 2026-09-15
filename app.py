@@ -12,7 +12,7 @@ R2_ACCESS_KEY = st.secrets["R2_ACCESS_KEY_ID"]
 R2_SECRET_KEY = st.secrets["R2_SECRET_ACCESS_KEY"]
 R2_ENDPOINT = st.secrets["R2_ENDPOINT_URL"]
 BUCKET_NAME = "amalitech-capstone-data1"
-FILE_NAME = "wfp_food_prices_gha.csv"
+FILE_NAME = "clean/wfp_gha_clean.csv" # This is the clean version of the data
 LOCAL_FILE = "offline_wfp_data.csv"
 
 # 3. The Offline-First Data Loader
