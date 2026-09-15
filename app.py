@@ -291,32 +291,31 @@ if not df.empty:
     with tab_risk:
         st.subheader("Price Volatility & Market Risk Ranking")
         st.caption("Measures price stability across commodities to identify income predictability.")
-        
-        # **PLACE YOUR CODE HERE** (Lydia Oduro)
-       
-      risk_df = df.dropna(subset=['price_per_kg'])
 
-      volatility_summary = (
-      risk_df.groupby('commodity')['price_per_kg']
-           .agg(mean_price='mean', std_price='std', n='count')
-           .reset_index()
-)
+        # PLACE YOUR CODE HERE (Lydia Oduro)
+        risk_df = df.dropna(subset=['price_per_kg'])
 
-     volatility_summary = volatility_summary[volatility_summary['n'] >= 12]
-     volatility_summary['cv'] = volatility_summary['std_price'] / volatility_summary['mean_price']
-     volatility_summary = volatility_summary.sort_values('cv', ascending=True).tail(10)
+        volatility_summary = (
+            risk_df.groupby('commodity')['price_per_kg']
+                   .agg(mean_price='mean', std_price='std', n='count')
+                   .reset_index()
+        )
 
-fig_risk = px.bar(
-    volatility_summary,
-    x='cv',
-    y='commodity',
-    orientation='h',
-    labels={'cv': 'Volatility (Std Dev / Mean Price)', 'commodity': 'Commodity'},
-    title="Top 10 Riskiest Commodities Nationally",
-    template="simple_white"
-)
-fig_risk.update_traces(marker_color='#555555')
-st.plotly_chart(fig_risk, use_container_width=True)
+        volatility_summary = volatility_summary[volatility_summary['n'] >= 12]
+        volatility_summary['cv'] = volatility_summary['std_price'] / volatility_summary['mean_price']
+        volatility_summary = volatility_summary.sort_values('cv', ascending=True).tail(10)
+
+        fig_risk = px.bar(
+            volatility_summary,
+            x='cv',
+            y='commodity',
+            orientation='h',
+            labels={'cv': 'Volatility (Std Dev / Mean Price)', 'commodity': 'Commodity'},
+            title="Top 10 Riskiest Commodities Nationally",
+            template="simple_white"
+        )
+        fig_risk.update_traces(marker_color='#555555')
+        st.plotly_chart(fig_risk, use_container_width=True)
 
 else:
     st.warning("Awaiting valid dataset load. Please verify cloud credentials or local cache.")
