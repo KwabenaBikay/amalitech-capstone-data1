@@ -254,7 +254,7 @@ if not df.empty:
     st.markdown('<div class="chart-container">', unsafe_allow_html=True)
     st.markdown("<h6 style='margin:0; font-weight:600;'>Price Volatility & Market Risk Ranking</h6>", unsafe_allow_html=True)
 
-    # **PLACE YOUR CODE HERE** (Lydia Oduro)
+    
     risk_df = df.dropna(subset=['price_per_kg'])
     volatility_summary = risk_df.groupby('commodity')['price_per_kg'].agg(mean_price='mean', std_price='std', n='count').reset_index()
     volatility_summary = volatility_summary[volatility_summary['n'] >= 12]
