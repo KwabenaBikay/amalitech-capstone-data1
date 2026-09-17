@@ -29,7 +29,7 @@ h1 { font-size: 1.6rem !important; font-weight: 700 !important; margin-bottom: 0
 .metric-card {
     background-color: var(--secondary-background-color);
     border: 1px solid var(--text-color);
-    border-radius: 0px !important; /* Strict sharp edges */
+    border-radius: 0px !important;
     padding: 14px 16px;
     min-height: 110px;
     display: flex;
@@ -41,24 +41,19 @@ h1 { font-size: 1.6rem !important; font-weight: 700 !important; margin-bottom: 0
 .metric-value { font-family: 'Inter', sans-serif; font-size: 1.7rem; font-weight: 700; line-height: 1.1; margin: 8px 0 4px 0; letter-spacing: -0.03em;}
 .metric-sub { font-family: 'Inter', sans-serif; font-size: 0.7rem; opacity: 0.65; }
 
-/* ---- Editorial Recommendation block ---- */
+/* ---- Editorial Recommendation block (Long Rectangle) ---- */
 .insight-card {
     background-color: var(--text-color);
     color: var(--background-color);
     border-radius: 0px !important;
-    padding: 16px 20px;
+    padding: 24px 28px;
     margin-top: 15px;
     margin-bottom: 25px;
-    display: flex;
-    align-items: flex-start;
-    gap: 20px;
-    border-left: 6px solid #2563EB; /* Bright accent mark */
+    display: block;
 }
-.insight-icon { font-size: 1.8rem; line-height: 1; }
-.insight-content { display: flex; flex-direction: column; gap: 6px; }
-.insight-tag { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; opacity: 0.8;}
-.insight-body { font-size: 0.95rem; line-height: 1.4; font-weight: 500; }
-.insight-body strong { font-weight: 700; color: #FFFFFF; }
+.insight-tag { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.1em; opacity: 0.7; margin-bottom: 10px;}
+.insight-body { font-size: 1.05rem; line-height: 1.4; font-weight: 500; }
+.insight-body strong { font-weight: 700; }
 
 /* ---- Compact Chart Containers ---- */
 .chart-container {
@@ -140,25 +135,22 @@ if not df.empty:
     elif premium_pct < -5: trend_text = f"Techiman historically pays <strong>{abs(premium_pct):.0f}% less</strong> than national average for {selected_commodity}. Check comparisons."
     else: trend_text = f"Techiman's {selected_commodity} prices track closely to the national average (±5%)."
 
-    # Themed KPI Cards with colored top-borders and icons
+    # Themed KPI Cards with colored top-borders (No Emojis)
     with col1:
-        st.markdown(f'<div class="metric-card" style="border-top: 4px solid #2563EB;"><div class="metric-label"><span>🏷️</span> Latest Price</div><div class="metric-value">GH₵ {latest_price:,.2f}</div><div class="metric-sub">{selected_commodity}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card" style="border-top: 4px solid #2563EB;"><div class="metric-label">Latest Price</div><div class="metric-value">GH₵ {latest_price:,.2f}</div><div class="metric-sub">{selected_commodity}</div></div>', unsafe_allow_html=True)
     with col2:
         delta_color = "#D9381E" if mom_change < 0 else "#2E7D32"
-        st.markdown(f'<div class="metric-card" style="border-top: 4px solid {delta_color};"><div class="metric-label"><span>📈</span> Period Delta</div><div class="metric-value" style="color: {delta_color};">{mom_change:+.1f}%</div><div class="metric-sub">Retail price, per KG</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card" style="border-top: 4px solid {delta_color};"><div class="metric-label">Period Delta</div><div class="metric-value" style="color: {delta_color};">{mom_change:+.1f}%</div><div class="metric-sub">Retail price, per KG</div></div>', unsafe_allow_html=True)
     with col3:
-        st.markdown(f'<div class="metric-card" style="border-top: 4px solid #D97706;"><div class="metric-label"><span>🎯</span> Data Confidence</div><div class="metric-value">{confidence_pct:.0f}%</div><div class="metric-sub">Direct Field Obs.</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card" style="border-top: 4px solid #D97706;"><div class="metric-label">Data Confidence</div><div class="metric-value">{confidence_pct:.0f}%</div><div class="metric-sub">Direct Field Obs.</div></div>', unsafe_allow_html=True)
     with col4:
-        st.markdown(f'<div class="metric-card" style="border-top: 4px solid #6B7280;"><div class="metric-label"><span>📍</span> Market Role</div><div class="metric-value">Transit Hub</div><div class="metric-sub">Techiman Basin</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card" style="border-top: 4px solid #6B7280;"><div class="metric-label">Market Role</div><div class="metric-value">Transit Hub</div><div class="metric-sub">Techiman Basin</div></div>', unsafe_allow_html=True)
 
-    # Sharp, editorial advisory block
+    # Sharp, editorial advisory block (Long Rectangle)
     st.markdown(f"""
     <div class="insight-card">
-        <div class="insight-icon">💡</div>
-        <div class="insight-content">
-            <div class="insight-tag">Strategic Advisory</div>
-            <div class="insight-body">{trend_text}</div>
-        </div>
+        <div class="insight-tag">Strategic Advisory</div>
+        <div class="insight-body">{trend_text}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -255,7 +247,6 @@ if not df.empty:
         if has_both and not spread_pivot.empty:
             fig_markup = px.line(spread_pivot, x='date', y='markup', labels={'markup': 'Markup (GH₵/kg)', 'date': ''})
             fig_markup.add_hline(y=0, line_dash="dot", line_color="gray")
-            # Adjusted height to 280 to align with Tab 3
             fig_markup.update_layout(height=280, margin=dict(l=0, r=0, t=10, b=0), hovermode="x unified")
             st.plotly_chart(fig_markup, use_container_width=True, theme="streamlit")
         else:
