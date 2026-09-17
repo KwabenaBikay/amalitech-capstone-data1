@@ -191,20 +191,128 @@ if not df.empty:
     row2_col1, row2_col2 = st.columns(2)
 
     with row2_col1:
-        # ------------------------------------------------------------------------------
-        # TAB 3: Lidwan Abubakari — MARKET COMPARISON & ARBITRAGE
-        # ------------------------------------------------------------------------------
-        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        st.markdown("<h6 style='margin:0; font-weight:600;'>Regional Comparison</h6>", unsafe_allow_html=True)
-        
-        # **PLACE YOUR CODE HERE** (Lidwan Abubakari)
-        comp_df = df[(df['commodity'] == selected_commodity) & (df['market'].isin(selected_markets))]
-        market_summary = comp_df.groupby('market')['price'].mean().reset_index()
-        
-        fig_market = px.bar(market_summary, x='market', y='price', color='market', labels={'market': '', 'price': 'Price (GH₵)'})
-        fig_market.update_layout(height=280, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
-        st.plotly_chart(fig_market, use_container_width=True, theme="streamlit")
-        st.markdown('</div>', unsafe_allow_html=True)
+            # ------------------------------------------------------------------------------
+            # TAB 3: Lidwan Abubakari — MARKET COMPARISON & ARBITRAGE
+            # ------------------------------------------------------------------------------
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+            st.markdown("<h6 style='margin:0; font-weight:600;'>Regional Comparison</h6>", unsafe_allow_html=True)
+    
+            
+            period_choice = st.radio(
+                "Time period:", ["Last 3M", "Last 6M", "Last 12M", "All Time"],
+                index=2, horizontal=True, key="tab3_period"
+            )
+    
+            comp_df = df[
+                (df['commodity'] == selected_commodity) &
+                (df['market'].isin(selected_markets))
+            ].copy()
+    
+            if not comp_df.empty:
+                max_date = comp_df['date'].max()
+                period_map = {"Last 3M": 3, "Last 6M": 6, "Last 12M": 12, "All Time": None}
+                months = period_map[period_choice]
+                if months is not None:
+                    comp_df = comp_df[comp_df['date'] >= max_date - pd.DateOffset(months=months)]
+    
+            if not comp_df.empty and 'pricetype' in comp_df.columns:
+                
+                market_summary = (
+                    comp_df.groupby(['market', 'pricetype'])['price']
+                    .agg(['mean', 'min', 'max', 'count'])
+                    .reset_index()
+                    .rename(columns={
+                        'mean': 'average_price',
+                        'min': 'lowest_price',
+                        'max': 'highest_price',
+                        'count': 'observations'
+                    })
+                )
+    
+                if not market_summary.empty:
+                    
+                    retail_only = market_summary[market_summary['pricetype'].str.lower() == 'retail']
+                    if not retail_only.empty:
+                        market_order = (
+                            retail_only.groupby('market')['average_price']
+                            .mean()
+                            .sort_values(ascending=True)
+                            .index.tolist()
+                        )
+                    else:
+                        market_order = sorted(market_summary['market'].unique())
+    
+                    
+                    if not retail_only.empty:
+                        retail_sorted = retail_only.sort_values('average_price', ascending=True)
+                        cheapest_market = retail_sorted.iloc[0]
+                        expensive_market = retail_sorted.iloc[-1]
+    
+                        price_difference = (
+                            expensive_market['average_price'] -
+                            cheapest_market['average_price']
+                        )
+                        arbitrage_pct = (
+                            price_difference / cheapest_market['average_price'] * 100
+                            if cheapest_market['average_price'] != 0 else 0
+                        )
+    
+                        if len(retail_sorted) > 1:
+                            st.markdown(
+                                f"""
+                                **Arbitrage Opportunity (Retail):**  
+                                Lowest average price: **{cheapest_market['market']}**
+                                (GH₵ {cheapest_market['average_price']:,.2f})  
+                                Highest average price: **{expensive_market['market']}**
+                                (GH₵ {expensive_market['average_price']:,.2f})  
+                                Potential gross price spread: **GH₵ {price_difference:,.2f}**
+                                (**{arbitrage_pct:.1f}%**)
+                                """
+                            )
+                        else:
+                            st.caption(
+                                f"Select more than one market to see arbitrage spread. "
+                                f"**{cheapest_market['market']}** retail average: GH₵ {cheapest_market['average_price']:,.2f}"
+                            )
+    
+                    
+                    fig_market = px.bar(
+                        market_summary,
+                        x='market',
+                        y='average_price',
+                        color='pricetype',
+                        barmode='group',
+                        text='average_price',
+                        labels={
+                            'market': '',
+                            'average_price': 'Average Price (GH₵)',
+                            'pricetype': 'Price Type'
+                        },
+                        category_orders={'market': market_order}
+                    )
+    
+                    fig_market.update_traces(
+                        texttemplate='GH₵ %{text:.2f}',
+                        textposition='outside'
+                    )
+    
+                    fig_market.update_layout(
+                        height=280,
+                        margin=dict(l=0, r=0, t=20, b=0),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0)
+                    )
+    
+                    st.plotly_chart(
+                        fig_market,
+                        use_container_width=True,
+                        theme="streamlit"
+                    )
+                else:
+                    st.info("No data available for the selected markets in this period.")
+            else:
+                st.info("No price data available for the selected comparison markets in this period.")
+    
+            st.markdown('</div>', unsafe_allow_html=True)
 
     with row2_col2:
         # ------------------------------------------------------------------------------
@@ -213,7 +321,7 @@ if not df.empty:
         st.markdown('<div class="chart-container">', unsafe_allow_html=True)
         st.markdown("<h6 style='margin:0; font-weight:600;'>Wholesale vs. Retail Spread</h6>", unsafe_allow_html=True)
         
-                # **PLACE YOUR CODE HERE** (Hanna Oduro)
+                
         # Filter to Techiman + selected commodity, both price types included
         spread_source = df[
             (df['market'].str.contains('Techiman', case=False, na=False)) &
