@@ -107,35 +107,7 @@ h2, h3 {
     line-height: 1.5;
 }
 
-/* ---- Tabs ---- */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 28px;
-    border-bottom: 1px solid #DDDAD2;
-}
-.stTabs [data-baseweb="tab"] {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.88rem;
-    font-weight: 500;
-    color: #111111 !important;
-    padding: 10px 0;
-    opacity: 1 !important;
-}
-.stTabs [data-baseweb="tab"]:hover {
-    color: #111111 !important;
-    opacity: 1 !important;
-}
-.stTabs [aria-selected="true"] {
-    color: #111111 !important;
-    font-weight: 700 !important;
-}
-.stTabs [data-baseweb="tab-highlight"] {
-    background-color: #111111 !important;
-}
-
-
-
 /* ---- Sidebar: black panel ---- */
-/* Multiselect chips - forced */
 section[data-testid="stSidebar"] span[data-baseweb="tag"],
 section[data-testid="stSidebar"] span[data-baseweb="tag"] > div,
 section[data-testid="stSidebar"] div[data-baseweb="tag"] {
@@ -150,7 +122,6 @@ section[data-testid="stSidebar"] div[data-baseweb="tag"] * {
     fill: #111111 !important;
 }
 
-/* Collapse button - all variants */
 [data-testid="stSidebarCollapseButton"],
 [data-testid="baseButton-headerNoPadding"],
 [data-testid="stSidebarCollapsedControl"] {
@@ -171,6 +142,14 @@ section[data-testid="stSidebar"] button svg,
 section[data-testid="stSidebar"] button svg path {
     fill: #FFFFFF !important;
     stroke: #FFFFFF !important;
+}
+
+/* ---- Customizing Chart Containers for Grid Look ---- */
+.chart-container {
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    padding: 15px;
+    margin-bottom: 20px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -258,7 +237,7 @@ if not df.empty:
     # ==============================================================================
     col1, col2, col3, col4 = st.columns(4)
     
-        # **PLACE YOUR CODE HERE** (Augustine Abdulai: Update these KPI calculations)
+    # **PLACE YOUR CODE HERE** (Augustine Abdulai: Update these KPI calculations)
     latest_price = techiman_df['price'].iloc[-1] if not techiman_df.empty else 0.0
     prev_price = techiman_df['price'].iloc[-2] if len(techiman_df) > 1 else latest_price
     mom_change = ((latest_price - prev_price) / prev_price * 100) if prev_price != 0 else 0.0
@@ -336,43 +315,41 @@ if not df.empty:
     </div>
     """, unsafe_allow_html=True)
 
-    # ==============================================================================
-    # TABBED VISUALIZATION LAYOUT
-    # ==============================================================================
-    tab_trend, tab_season, tab_market, tab_markup, tab_risk = st.tabs([
-        "Price History",
-        "Seasonality Curve",
-        "Market Comparison",
-        "Wholesale vs Retail",
-        "Commodity Volatility"
-    ])
 
-    # ------------------------------------------------------------------------------
-    # TAB 1: HISTORICAL PRICE TREND
-    # ------------------------------------------------------------------------------
-    with tab_trend:
-        st.subheader(f"Longitudinal Price Trend: {selected_commodity}")
+    # ==============================================================================
+    # GRID VISUALIZATION LAYOUT (POWER BI STYLE)
+    # ==============================================================================
+    
+    # ------------------- ROW 1 -------------------
+    row1_col1, row1_col2 = st.columns(2)
+    
+    with row1_col1:
+        # ------------------------------------------------------------------------------
+        # TAB 1: HISTORICAL PRICE TREND
+        # ------------------------------------------------------------------------------
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        st.subheader(f"Longitudinal Trend: {selected_commodity}")
         if not techiman_df.empty:
             fig_trend = px.line(
                 techiman_df, 
                 x='date', 
                 y='price',
-                title=f"{selected_commodity} Price History in Techiman (GH₵)",
                 labels={'price': 'Price (GH₵)', 'date': 'Observation Date'},
                 template="simple_white"
             )
             fig_trend.update_traces(line=dict(color='#111111', width=2))
-            fig_trend.update_layout(hovermode="x unified")
+            fig_trend.update_layout(hovermode="x unified", margin=dict(l=0, r=0, t=10, b=0))
             st.plotly_chart(fig_trend, use_container_width=True)
         else:
             st.info("No historical records available for this commodity in Techiman.")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # ------------------------------------------------------------------------------
-    # TAB 2: Joseph Mensah — SEASONAL TREND ENGINE
-    # ------------------------------------------------------------------------------
-    with tab_season:
-        st.subheader("Seasonal Price Index (17-Year Aggregates)")
-        st.caption("Identifies regular annual harvest peaks and lean season troughs by month.")
+    with row1_col2:
+        # ------------------------------------------------------------------------------
+        # TAB 2: Joseph Mensah — SEASONAL TREND ENGINE
+        # ------------------------------------------------------------------------------
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        st.subheader("Seasonal Price Index")
         
         # **PLACE YOUR CODE HERE** (Joseph Mensah)
         season_df = techiman_df.copy()
@@ -388,14 +365,21 @@ if not df.empty:
             template="simple_white"
         )
         fig_season.update_traces(marker_color='#333333')
+        fig_season.update_layout(margin=dict(l=0, r=0, t=10, b=0))
         st.plotly_chart(fig_season, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # ------------------------------------------------------------------------------
-    # TAB 3: Lidwan Abubakari — MARKET COMPARISON & ARBITRAGE
-    # ------------------------------------------------------------------------------
-    with tab_market:
-        st.subheader("Regional Market Price Comparison")
-        st.caption("Evaluates selling opportunities between Techiman and neighbouring regional trading hubs.")
+
+    # ------------------- ROW 2 -------------------
+    st.markdown("<br>", unsafe_allow_html=True) # Adds a little spacing between rows
+    row2_col1, row2_col2 = st.columns(2)
+
+    with row2_col1:
+        # ------------------------------------------------------------------------------
+        # TAB 3: Lidwan Abubakari — MARKET COMPARISON & ARBITRAGE
+        # ------------------------------------------------------------------------------
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        st.subheader("Regional Market Comparison")
         
         # **PLACE YOUR CODE HERE** (Lidwan Abubakari)
         comp_df = df[(df['commodity'] == selected_commodity) & (df['market'].isin(selected_markets))]
@@ -409,14 +393,16 @@ if not df.empty:
             labels={'market': 'Trading Hub', 'price': 'Mean Price (GH₵)'},
             template="simple_white"
         )
+        fig_market.update_layout(margin=dict(l=0, r=0, t=10, b=0))
         st.plotly_chart(fig_market, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # ------------------------------------------------------------------------------
-    # TAB 4: Hanna Oduro — WHOLESALE VS. RETAIL SPREAD
-    # ------------------------------------------------------------------------------
-    with tab_markup:
-        st.subheader("Wholesale vs. Retail Spread Analysis")
-        st.caption("Quantifies middleman margin by contrasting farmgate/wholesale price with end-consumer retail.")
+    with row2_col2:
+        # ------------------------------------------------------------------------------
+        # TAB 4: Hanna Oduro — WHOLESALE VS. RETAIL SPREAD
+        # ------------------------------------------------------------------------------
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        st.subheader("Wholesale vs. Retail Spread")
         
         # **PLACE YOUR CODE HERE** (Hanna Oduro)
         if 'pricetype' in techiman_df.columns and len(techiman_df['pricetype'].unique()) > 1:
@@ -428,41 +414,48 @@ if not df.empty:
                 labels={'price': 'Price (GH₵)', 'date': 'Date', 'pricetype': 'Pricing Tier'},
                 template="simple_white"
             )
+            fig_markup.update_layout(margin=dict(l=0, r=0, t=10, b=0))
             st.plotly_chart(fig_markup, use_container_width=True)
         else:
             st.info("Insufficient retail/wholesale price type pairs available for this commodity selection.")
+        st.markdown('</div>', unsafe_allow_html=True)
 
+
+    # ------------------- ROW 3 (Full Width) -------------------
+    st.markdown("<br>", unsafe_allow_html=True)
+    
     # ------------------------------------------------------------------------------
     # TAB 5: Lydia Oduro — COMMODITY VOLATILITY & RISK MATRIX
     # ------------------------------------------------------------------------------
-    with tab_risk:
-        st.subheader("Price Volatility & Market Risk Ranking")
-        st.caption("Measures price stability across commodities to identify income predictability.")
+    st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+    st.subheader("Price Volatility & Market Risk Ranking")
+    st.caption("Measures price stability across commodities to identify income predictability.")
 
-        # PLACE YOUR CODE HERE (Lydia Oduro)
-        risk_df = df.dropna(subset=['price_per_kg'])
+    # **PLACE YOUR CODE HERE** (Lydia Oduro)
+    risk_df = df.dropna(subset=['price_per_kg'])
 
-        volatility_summary = (
-            risk_df.groupby('commodity')['price_per_kg']
-                   .agg(mean_price='mean', std_price='std', n='count')
-                   .reset_index()
-        )
+    volatility_summary = (
+        risk_df.groupby('commodity')['price_per_kg']
+               .agg(mean_price='mean', std_price='std', n='count')
+               .reset_index()
+    )
 
-        volatility_summary = volatility_summary[volatility_summary['n'] >= 12]
-        volatility_summary['cv'] = volatility_summary['std_price'] / volatility_summary['mean_price']
-        volatility_summary = volatility_summary.sort_values('cv', ascending=True).tail(10)
+    volatility_summary = volatility_summary[volatility_summary['n'] >= 12]
+    volatility_summary['cv'] = volatility_summary['std_price'] / volatility_summary['mean_price']
+    volatility_summary = volatility_summary.sort_values('cv', ascending=True).tail(10)
 
-        fig_risk = px.bar(
-            volatility_summary,
-            x='cv',
-            y='commodity',
-            orientation='h',
-            labels={'cv': 'Volatility (Std Dev / Mean Price)', 'commodity': 'Commodity'},
-            title="Top 10 Riskiest Commodities Nationally",
-            template="simple_white"
-        )
-        fig_risk.update_traces(marker_color='#555555')
-        st.plotly_chart(fig_risk, use_container_width=True)
+    fig_risk = px.bar(
+        volatility_summary,
+        x='cv',
+        y='commodity',
+        orientation='h',
+        labels={'cv': 'Volatility (Std Dev / Mean Price)', 'commodity': 'Commodity'},
+        template="simple_white"
+    )
+    fig_risk.update_traces(marker_color='#555555')
+    fig_risk.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=400)
+    st.plotly_chart(fig_risk, use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     st.warning("Awaiting valid dataset load. Please verify cloud credentials or local cache.")
