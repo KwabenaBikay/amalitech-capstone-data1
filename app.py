@@ -438,19 +438,27 @@ if not df.empty:
     with tab_risk:
         st.subheader("Price Volatility & Market Risk Ranking")
         st.caption("Measures price stability across commodities to identify income predictability.")
-        
-        # **PLACE YOUR CODE HERE** (Lydia Oduro)
-        all_techiman = df[df['market'].str.contains('Techiman', case=False, na=False)]
-        volatility_summary = all_techiman.groupby('commodity')['price'].std().dropna().reset_index()
-        volatility_summary = volatility_summary.sort_values(by='price', ascending=True).tail(10)
-        
+
+        # PLACE YOUR CODE HERE (Lydia Oduro)
+        risk_df = df.dropna(subset=['price_per_kg'])
+
+        volatility_summary = (
+            risk_df.groupby('commodity')['price_per_kg']
+                   .agg(mean_price='mean', std_price='std', n='count')
+                   .reset_index()
+        )
+
+        volatility_summary = volatility_summary[volatility_summary['n'] >= 12]
+        volatility_summary['cv'] = volatility_summary['std_price'] / volatility_summary['mean_price']
+        volatility_summary = volatility_summary.sort_values('cv', ascending=True).tail(10)
+
         fig_risk = px.bar(
             volatility_summary,
-            x='price',
+            x='cv',
             y='commodity',
             orientation='h',
-            labels={'price': 'Historical Std Dev (GH₵)', 'commodity': 'Commodity'},
-            title="Top 10 Volatile Commodities in Techiman",
+            labels={'cv': 'Volatility (Std Dev / Mean Price)', 'commodity': 'Commodity'},
+            title="Top 10 Riskiest Commodities Nationally",
             template="simple_white"
         )
         fig_risk.update_traces(marker_color='#555555')
