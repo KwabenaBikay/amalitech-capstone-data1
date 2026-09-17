@@ -213,13 +213,38 @@ if not df.empty:
         st.markdown('<div class="chart-container">', unsafe_allow_html=True)
         st.markdown("<h6 style='margin:0; font-weight:600;'>Wholesale vs. Retail Spread</h6>", unsafe_allow_html=True)
         
-        # **PLACE YOUR CODE HERE** (Hanna Oduro)
-        if 'pricetype' in techiman_df.columns and len(techiman_df['pricetype'].unique()) > 1:
-            fig_markup = px.line(techiman_df, x='date', y='price', color='pricetype', labels={'price': 'Price (GH₵)', 'date': ''})
-            fig_markup.update_layout(height=280, margin=dict(l=0, r=0, t=10, b=0))
+                # **PLACE YOUR CODE HERE** (Hanna Oduro)
+        # Filter to Techiman + selected commodity, both price types included
+        spread_source = df[
+            (df['market'].str.contains('Techiman', case=False, na=False)) &
+            (df['commodity'] == selected_commodity)
+        ]
+
+        # Pivot Wholesale/Retail into side-by-side columns per date
+        spread_pivot = spread_source.pivot_table(
+            index='date',
+            columns='pricetype',
+            values='price_per_kg',
+            aggfunc='mean'
+        ).reset_index()
+
+        has_both = 'Wholesale' in spread_pivot.columns and 'Retail' in spread_pivot.columns
+
+        if has_both:
+            # Keep only dates where BOTH wholesale and retail exist
+            spread_pivot = spread_pivot.dropna(subset=['Wholesale', 'Retail']).sort_values('date')
+            spread_pivot['markup'] = spread_pivot['Retail'] - spread_pivot['Wholesale']
+
+        if has_both and not spread_pivot.empty:
+            fig_markup = px.line(
+                spread_pivot, x='date', y='markup',
+                labels={'markup': 'Markup (GH₵/kg)', 'date': ''}
+            )
+            fig_markup.add_hline(y=0, line_dash="dot", line_color="gray")
+            fig_markup.update_layout(height=280, margin=dict(l=0, r=0, t=10, b=0), hovermode="x unified")
             st.plotly_chart(fig_markup, use_container_width=True, theme="streamlit")
         else:
-            st.info("Insufficient retail/wholesale price type pairs available.")
+            st.info("No matched wholesale/retail pairs available for this commodity at Techiman.")
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ------------------- ROW 3 (Full Width) -------------------
