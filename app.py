@@ -312,13 +312,30 @@ if not df.empty:
         st.markdown('<div class="chart-container"><div class="chart-title">Seasonal Price Index</div>', unsafe_allow_html=True)
         
         # **PLACE YOUR CODE HERE** (Joseph Mensah)
-        season_df = techiman_df.copy()
-        season_df['month'] = season_df['date'].dt.strftime('%b')
-        monthly_avg = season_df.groupby('month')['price'].mean().reindex(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']).reset_index()
+        selected_commodity = "Maize"
+        commodity_df = df[df["commodity"] == selected_commodity].copy()
 
-        fig_season = px.bar(monthly_avg, x='month', y='price', labels={'month': '', 'price': 'Price (GH₵)'})
-        fig_season.update_traces(marker_color='#111111')
-        fig_season.update_layout(height=280, margin=dict(l=50, r=20, t=10, b=40), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+        monthly_average = (
+            commodity_df
+                .groupby(["month", "month_name"], as_index=False)["price"]
+                .mean()
+                .sort_values("month")
+        )
+
+        fig_season = px.line(
+            monthly_average,
+            x="month_name",
+            y="price",
+            title=f"Historical Price Patern - {selected_commodity}",
+            labels={
+                "month_name": "Month",
+                "price": "Average Historical Price (GH₵)"
+            }
+        )
+
+        fig_season.show()
+        fig_season.update_traces(line=dict(color='#111111', width=2))
+        fig_season.update_layout(height=280, margin=dict(l=50, r=20, t=40, b=40), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig_season, use_container_width=True, theme=None)
         st.markdown('</div>', unsafe_allow_html=True)
 
