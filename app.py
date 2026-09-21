@@ -5,6 +5,14 @@ import boto3
 import io
 import os
 
+def clean_wholesale(data):
+    data = data.dropna(subset=['price_per_kg'])
+    data = data[data['pricetype'] == 'Wholesale'].sort_values('date').copy()
+    data['recent_median'] = data.groupby('market')['price_per_kg'].transform(
+        lambda s: s.shift(1).rolling(6, min_periods=3).median())
+    keep = data['recent_median'].isna() | (data['price_per_kg'] <= data['recent_median'] * 3)
+    return data[keep]
+
 # ==============================================================================
 # TEAM LEAD: BISMARK — ARCHITECTURE & PAGE CONFIGURATION
 # ==============================================================================
@@ -64,6 +72,95 @@ h1 { font-size: 1.6rem !important; font-weight: 700 !important; margin-bottom: 0
     margin-bottom: 15px;
 }
 .chart-title { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
+
+/* 1. KPI cards forest green, white text, no top bars */
+.metric-card {
+    background-color: #FFFFFF;
+    border: 1px solid #123D2B;
+    border-radius: 6px !important;
+    padding: 14px 16px;
+    min-height: 110px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: none;
+}
+.metric-card.hero {
+    background-color: #123D2B;
+    border-color: #123D2B;
+}
+.metric-card.hero .metric-label,
+.metric-card.hero .metric-value,
+.metric-card.hero .metric-sub { color: #FFFFFF !important; }
+.metric-card.hero .metric-sub { opacity: 0.7; }
+
+.metric-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+
+.metric-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background-color: #A9E7BE;
+    color: #0B2C1E;
+    padding: 3px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.metric-label, .metric-sub { opacity: 0.75 !important; }
+
+/* 3. Brand block */
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 0 16px 0;
+    margin-top: -55px;
+    border-bottom: 1px solid #DDD9D0;
+    margin-bottom: 18px;
+}
+.brand-name { font-size: 1rem; font-weight: 700; color: #123D2B; letter-spacing: -0.01em; line-height: 1; }
+
+/* 4. Collapse button always visible */
+[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapseButton"] button { opacity: 1 !important; }
+[data-testid="stSidebarCollapseButton"] svg,
+[data-testid="stSidebarCollapseButton"] svg path {
+    fill: #123D2B !important;
+    stroke: #123D2B !important;
+    opacity: 1 !important;
+}
+
+/* 5. Select boxes forest green */
+section[data-testid="stSidebar"] [data-baseweb="select"] > div {
+    background-color: #123D2B !important;
+    border: 1px solid #123D2B !important;
+    border-radius: 0 !important;
+}
+section[data-testid="stSidebar"] [data-baseweb="select"] > div * { color: #FFFFFF !important; }
+section[data-testid="stSidebar"] [data-baseweb="select"] svg { fill: #FFFFFF !important; }
+
+/* 6. Faster sidebar collapse */
+section[data-testid="stSidebar"] { transition: all 0.12s ease !important; }
+section[data-testid="stSidebar"] > div { transition: none !important; }
+section[data-testid="stSidebar"] { border-right: 1px solid #E5E7EB; }
+
+.insight-card {
+    background-color: #F4FAF6 !important;
+    border: 1.5px solid #123D2B !important;
+    border-radius: 6px !important;
+    padding: 20px 24px !important;
+}
+.insight-card * { color: #123D2B !important; }
+.insight-tag { color: #2E7D5B !important; opacity: 1 !important; }
+
+.brand { position: relative; z-index: 1; }
+[data-testid="stSidebarCollapseButton"] {
+    position: relative;
+    z-index: 999 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -96,6 +193,16 @@ df, status = load_data()
 # SIDEBAR FILTERS
 # ==============================================================================
 with st.sidebar:
+    st.markdown("""
+    <div class="brand">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="7" fill="#123D2B"/>
+            <path d="M8 23C8 15.5 13 11 22 10C22 18.5 17 23 8 23Z" fill="#FFFFFF"/>
+            <polyline points="11,20 14,17 17,18.5 21,13" stroke="#123D2B" stroke-width="1.6" fill="none" stroke-linecap="square"/>
+        </svg>
+        <div class="brand-name">AgriDash</div>
+    </div>
+    """, unsafe_allow_html=True)
     st.title("Market Filters")
     st.caption(f"System State: **{status}**")
     st.markdown("---")
@@ -122,30 +229,55 @@ if not df.empty:
     col1, col2, col3, col4 = st.columns(4)
     
     # **PLACE YOUR CODE HERE** (Augustine Abdulai)
-    latest_price = techiman_df['price'].iloc[-1] if not techiman_df.empty else 0.0
-    prev_price = techiman_df['price'].iloc[-2] if len(techiman_df) > 1 else latest_price
-    mom_change = ((latest_price - prev_price) / prev_price * 100) if prev_price != 0 else 0.0
-    confidence_pct = (techiman_df['is_actual_observation'].mean()) * 100 if 'is_actual_observation' in techiman_df.columns else 34.0
+    kpi_df = clean_wholesale(df[(df['market'].str.contains('Techiman', case=False, na=False)) &
+                                (df['commodity'] == selected_commodity)])
+    national_df = clean_wholesale(df[df['commodity'] == selected_commodity])
 
-    overall_avg = df[(df['commodity'] == selected_commodity) & (df['pricetype'] == 'Retail')]['price'].mean()
-    techiman_avg = techiman_df['price'].mean() if not techiman_df.empty else 0
-    premium_pct = ((techiman_avg - overall_avg) / overall_avg) * 100 if techiman_avg and overall_avg else 0
+    has_data = len(kpi_df) > 0
+    has_delta = len(kpi_df) > 1
 
-    if premium_pct > 5: trend_text = f"Techiman historically pays <strong>{premium_pct:.0f}% more</strong> than national average for {selected_commodity}. Local sales favored."
-    elif premium_pct < -5: trend_text = f"Techiman historically pays <strong>{abs(premium_pct):.0f}% less</strong> than national average for {selected_commodity}. Check comparisons."
-    else: trend_text = f"Techiman's {selected_commodity} prices track closely to the national average (±5%)."
+    latest_price = kpi_df['price_per_kg'].iloc[-1] if has_data else 0.0
+    prev_price = kpi_df['price_per_kg'].iloc[-2] if has_delta else latest_price
+    mom_change = ((latest_price - prev_price) / prev_price * 100) if has_delta and prev_price else 0.0
+    confidence_pct = kpi_df['is_actual_observation'].mean() * 100 if has_data else 0.0
 
-    # Themed KPI Cards with colored top-borders (No Emojis)
+    overall_avg = national_df['price_per_kg'].mean() if not national_df.empty else 0
+    techiman_avg = kpi_df['price_per_kg'].mean() if has_data else 0
+
+    if not has_data or not overall_avg:
+        trend_text = (f"<strong>No wholesale records</strong> exist for {selected_commodity} "
+                      f"in Techiman, so no pricing guidance can be given.")
+    else:
+        premium_pct = ((techiman_avg - overall_avg) / overall_avg) * 100
+        if premium_pct > 5:
+            trend_text = f"Techiman historically pays <strong>{premium_pct:.0f}% more</strong> than national average for {selected_commodity}. Local sales favored."
+        elif premium_pct < -5:
+            trend_text = f"Techiman historically pays <strong>{abs(premium_pct):.0f}% less</strong> than national average for {selected_commodity}. Check comparisons."
+        else:
+            trend_text = f"Techiman's {selected_commodity} prices track closely to the national average (±5%)."
+
+        if confidence_pct < 25:
+            trend_text = (f"<strong>Limited data.</strong> Only {confidence_pct:.0f}% of {selected_commodity} "
+                          f"records were recorded at the market, so no reliable guidance can be given.")
+        elif confidence_pct < 60:
+            trend_text = f"<strong>Treat with caution.</strong> {trend_text} Only {confidence_pct:.0f}% of records are direct observations."
+    # Forest green KPI cards, no colored top borders
     with col1:
-        st.markdown(f'<div class="metric-card" style="border-top: 4px solid #2563EB;"><div class="metric-label">Latest Price</div><div class="metric-value">GH₵ {latest_price:,.2f}</div><div class="metric-sub">{selected_commodity}</div></div>', unsafe_allow_html=True)
+        price_display = f"GH₵ {latest_price:,.2f}" if has_data else "No data"
+        st.markdown(f'<div class="metric-card hero"><div class="metric-top"><div class="metric-label">Latest Price</div><div class="metric-tag">{selected_commodity}</div></div><div class="metric-value">{price_display}</div><div class="metric-sub">Wholesale price, per KG</div></div>', unsafe_allow_html=True)
     with col2:
-        delta_color = "#D9381E" if mom_change < 0 else "#2E7D32"
-        st.markdown(f'<div class="metric-card" style="border-top: 4px solid {delta_color};"><div class="metric-label">Period Delta</div><div class="metric-value" style="color: {delta_color};">{mom_change:+.1f}%</div><div class="metric-sub">Retail price, per KG</div></div>', unsafe_allow_html=True)
+        if has_delta:
+            delta_color = "#D9381E" if mom_change < 0 else "#2E7D32"
+            delta_tag = "Down" if mom_change < 0 else "Up"
+            delta_display = f"{mom_change:+.1f}%"
+        else:
+            delta_color, delta_tag, delta_display = "#9A9A9A", "N/A", "—"
+        st.markdown(f'<div class="metric-card"><div class="metric-top"><div class="metric-label">Period Delta</div><div class="metric-tag">{delta_tag}</div></div><div class="metric-value" style="color: {delta_color};">{delta_display}</div><div class="metric-sub">Since last reading</div></div>', unsafe_allow_html=True)
     with col3:
-        st.markdown(f'<div class="metric-card" style="border-top: 4px solid #D97706;"><div class="metric-label">Data Confidence</div><div class="metric-value">{confidence_pct:.0f}%</div><div class="metric-sub">Direct Field Obs.</div></div>', unsafe_allow_html=True)
+        conf_tag = "Low" if confidence_pct < 25 else ("Medium" if confidence_pct < 60 else "High")
+        st.markdown(f'<div class="metric-card"><div class="metric-top"><div class="metric-label">Data Confidence</div><div class="metric-tag">{conf_tag}</div></div><div class="metric-value">{confidence_pct:.0f}%</div><div class="metric-sub">Direct field obs.</div></div>', unsafe_allow_html=True)
     with col4:
-        st.markdown(f'<div class="metric-card" style="border-top: 4px solid #6B7280;"><div class="metric-label">Market Role</div><div class="metric-value">Transit Hub</div><div class="metric-sub">Techiman Basin</div></div>', unsafe_allow_html=True)
-
+        st.markdown(f'<div class="metric-card"><div class="metric-top"><div class="metric-label">Market Role</div><div class="metric-tag">Bono East</div></div><div class="metric-value">Transit Hub</div><div class="metric-sub">Techiman Basin</div></div>', unsafe_allow_html=True)
     # Sharp, editorial advisory block (Long Rectangle)
     st.markdown(f"""
     <div class="insight-card">
@@ -168,8 +300,9 @@ if not df.empty:
         st.markdown('<div class="chart-container"><div class="chart-title">Longitudinal Trend</div>', unsafe_allow_html=True)
         if not techiman_df.empty:
             fig_trend = px.line(techiman_df, x='date', y='price', labels={'price': 'Price (GH₵)', 'date': 'Date'})
-            fig_trend.update_layout(height=280, margin=dict(l=0, r=0, t=10, b=0), hovermode="x unified")
-            st.plotly_chart(fig_trend, use_container_width=True, theme="streamlit")
+            fig_trend.update_traces(line=dict(color='#111111', width=2))
+            fig_trend.update_layout(height=280, margin=dict(l=50, r=20, t=10, b=40), hovermode="x unified", plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_trend, use_container_width=True, theme=None)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with row1_col2:
@@ -184,8 +317,9 @@ if not df.empty:
         monthly_avg = season_df.groupby('month')['price'].mean().reindex(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']).reset_index()
 
         fig_season = px.bar(monthly_avg, x='month', y='price', labels={'month': '', 'price': 'Price (GH₵)'})
-        fig_season.update_layout(height=280, margin=dict(l=0, r=0, t=10, b=0))
-        st.plotly_chart(fig_season, use_container_width=True, theme="streamlit")
+        fig_season.update_traces(marker_color='#111111')
+        fig_season.update_layout(height=280, margin=dict(l=50, r=20, t=10, b=40), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig_season, use_container_width=True, theme=None)
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ------------------- ROW 2 -------------------
@@ -223,10 +357,9 @@ if not df.empty:
                     if len(retail_sorted) > 1:
                         st.markdown(f"<div style='font-size:0.8rem; margin-bottom:10px;'><strong>Arbitrage Spread:</strong> {cheapest['market']} (GH₵ {cheapest['average_price']:,.2f}) vs {expensive['market']} (GH₵ {expensive['average_price']:,.2f}) &rarr; <strong>+{pct:.1f}% Margin</strong></div>", unsafe_allow_html=True)
                 
-                fig_market = px.bar(market_summary, x='market', y='average_price', color='pricetype', barmode='group', text='average_price', labels={'market': '', 'average_price': 'Avg Price (GH₵)', 'pricetype': ''}, category_orders={'market': market_order})
-                fig_market.update_traces(texttemplate='GH₵ %{text:.2f}', textposition='outside')
-                fig_market.update_layout(height=230, margin=dict(l=0, r=0, t=10, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0))
-                st.plotly_chart(fig_market, use_container_width=True, theme="streamlit")
+                fig_market = px.bar(market_summary, x='market', y='average_price', color='pricetype', barmode='group', text='average_price', labels={'market': '', 'average_price': 'Avg Price (GH₵)', 'pricetype': ''}, category_orders={'market': market_order}, color_discrete_sequence=['#111111', '#9A9A9A'])
+                fig_market.update_layout(height=230, margin=dict(l=50, r=20, t=10, b=40), legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_market, use_container_width=True, theme=None)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with row2_col2:
@@ -246,9 +379,10 @@ if not df.empty:
 
         if has_both and not spread_pivot.empty:
             fig_markup = px.line(spread_pivot, x='date', y='markup', labels={'markup': 'Markup (GH₵/kg)', 'date': ''})
-            fig_markup.add_hline(y=0, line_dash="dot", line_color="gray")
-            fig_markup.update_layout(height=280, margin=dict(l=0, r=0, t=10, b=0), hovermode="x unified")
-            st.plotly_chart(fig_markup, use_container_width=True, theme="streamlit")
+            fig_markup.update_traces(line=dict(color='#111111', width=2))
+            fig_markup.add_hline(y=0, line_dash="dot", line_color="#9A9A9A")
+            fig_markup.update_layout(height=280, margin=dict(l=50, r=20, t=10, b=40), hovermode="x unified", plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_markup, use_container_width=True, theme=None)
         else:
             st.info("No matched wholesale/retail pairs available for this commodity at Techiman.")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -267,9 +401,10 @@ if not df.empty:
     volatility_summary = volatility_summary.sort_values('cv', ascending=True).tail(10)
 
     fig_risk = px.bar(volatility_summary, x='cv', y='commodity', orientation='h', labels={'cv': 'Volatility Coefficient (Std Dev / Mean)', 'commodity': ''})
-    fig_risk.update_layout(height=350, margin=dict(l=0, r=0, t=10, b=0))
-    st.plotly_chart(fig_risk, use_container_width=True, theme="streamlit")
+    fig_risk.update_traces(marker_color='#111111')
+    fig_risk.update_layout(height=350, margin=dict(l=140, r=20, t=10, b=40), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', yaxis=dict(ticklabelstandoff=12))
+    st.plotly_chart(fig_risk, use_container_width=True, theme=None)
     st.markdown('</div>', unsafe_allow_html=True)
 
 else:
-    st.warning("Awaiting valid dataset load. Please verify cloud credentials or local cache.")
+    st.warning("Awaiting valid dataset load. Please verify cloud credentials or local cache.")    
