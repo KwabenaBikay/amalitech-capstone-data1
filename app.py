@@ -4,6 +4,7 @@ import plotly.express as px
 import boto3
 import io
 import os
+from botocore.config import Config
 
 def clean_wholesale(data):
     data = data.dropna(subset=['price_per_kg'])
@@ -178,14 +179,28 @@ LOCAL_FILE = "offline_wfp_data.csv"
 @st.cache_data(ttl=3600)
 def load_data():
     try:
-        s3_client = boto3.client('s3', endpoint_url=R2_ENDPOINT, aws_access_key_id=R2_ACCESS_KEY, aws_secret_access_key=R2_SECRET_KEY, region_name='auto')
+        # Force the app to "fail fast" (give up after 3 seconds of no Wi-Fi)
+        fast_timeout = Config(connect_timeout=3, read_timeout=3, retries={'max_attempts': 1})
+        
+        s3_client = boto3.client(
+            's3', 
+            endpoint_url=R2_ENDPOINT, 
+            aws_access_key_id=R2_ACCESS_KEY, 
+            aws_secret_access_key=R2_SECRET_KEY, 
+            region_name='auto',
+            config=fast_timeout
+        )
         response = s3_client.get_object(Bucket=BUCKET_NAME, Key=FILE_NAME)
         df = pd.read_csv(io.BytesIO(response['Body'].read()), low_memory=False)
         df.to_csv(LOCAL_FILE, index=False)
         return df, "Live Cloud Data"
+        
     except Exception:
-        if os.path.exists(LOCAL_FILE): return pd.read_csv(LOCAL_FILE, low_memory=False), "Offline Mode (Local Cache)"
-        else: return pd.DataFrame(), "Connection Error"
+        # Instantly falls back to local data if the 3-second connection fails
+        if os.path.exists(LOCAL_FILE): 
+            return pd.read_csv(LOCAL_FILE, low_memory=False), "Offline Mode (Local Cache)"
+        else: 
+            return pd.DataFrame(), "Connection Error"
 
 df, status = load_data()
 
@@ -312,7 +327,6 @@ if not df.empty:
         st.markdown('<div class="chart-container"><div class="chart-title">Seasonal Price Index</div>', unsafe_allow_html=True)
         
         # **PLACE YOUR CODE HERE** (Joseph Mensah)
-        selected_commodity = "Maize"
         commodity_df = df[df["commodity"] == selected_commodity].copy()
 
         monthly_average = (
@@ -326,14 +340,12 @@ if not df.empty:
             monthly_average,
             x="month_name",
             y="price",
-            title=f"Historical Price Patern - {selected_commodity}",
+            title=f"Historical Price Pattern - {selected_commodity}",
             labels={
                 "month_name": "Month",
                 "price": "Average Historical Price (GH₵)"
             }
         )
-
-        fig_season.show()
         fig_season.update_traces(line=dict(color='#111111', width=2))
         fig_season.update_layout(height=280, margin=dict(l=50, r=20, t=40, b=40), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig_season, use_container_width=True, theme=None)
@@ -375,6 +387,7 @@ if not df.empty:
                         st.markdown(f"<div style='font-size:0.8rem; margin-bottom:10px;'><strong>Arbitrage Spread:</strong> {cheapest['market']} (GH₵ {cheapest['average_price']:,.2f}) vs {expensive['market']} (GH₵ {expensive['average_price']:,.2f}) &rarr; <strong>+{pct:.1f}% Margin</strong></div>", unsafe_allow_html=True)
                 
                 fig_market = px.bar(market_summary, x='market', y='average_price', color='pricetype', barmode='group', text='average_price', labels={'market': '', 'average_price': 'Avg Price (GH₵)', 'pricetype': ''}, category_orders={'market': market_order}, color_discrete_sequence=['#111111', '#9A9A9A'])
+                fig_market.update_traces(texttemplate='GH₵ %{text:.2f}', textposition='outside')
                 fig_market.update_layout(height=230, margin=dict(l=50, r=20, t=10, b=40), legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig_market, use_container_width=True, theme=None)
         st.markdown('</div>', unsafe_allow_html=True)
